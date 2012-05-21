@@ -1,0 +1,93 @@
+\documentclass[
+   final,      		 % fertiges Dokument
+   11pt,
+   headings=normal,   % normale Überschriften - smallheadings / bigheadings
+   english,          % wird an andere Pakete weitergereicht
+   a4paper,			 % Papiermaße
+   BCOR30mm,         % Zusaetzlicher Rand auf der Innenseite
+   DIV=11,            % Seitengroesse (siehe Koma Skript Dokumentation)
+   1.1headlines,     % Zeilenanzahl der Kopfzeilen
+   headinclude=false,      % Kopf nicht einbeziehen
+   footinclude=false,      % Fuss nicht einbeziehen
+   mpinclude=false,        % Margin nicht einbeziehen
+   pagesize,         % Schreibt die Papiergroesse in die Datei
+   twoside,          % Seitenraender für zweiseitiges Layout
+   cleardoublepage=empty, % leere, linke Seite mit Seitenstil 'empty'
+   titlepage,        % Titel als einzelne Seite ('titlepage' Umgebung)
+   parskip=half,      % Freiraum in letzter Zeile: 1em
+   headsepline,      % Linie unter Kolumnentitel
+   toc=graduated,        % eingereuckte Gliederung
+   numbers=noenddot, % Überschriftnummerierung ohne Punkt
+   fleqn,            % Formeln werden linksbuendig angezeigt
+   abstracton,
+   english
+]{scrartcl}			 % Klassen: scrartcl, scrreprt, scrbook
+% -------------------------------------------------------------------------
+
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+\usepackage{setspace}
+\onehalfspacing		 			% einstellen des Zeilenabstandes auf 1,5
+
+%formating source code
+\usepackage{listings}
+
+\usepackage{caption}
+
+\DeclareCaptionFont{white}{\color{white}}
+\DeclareCaptionFormat{listing}{\colorbox[cmyk]{0.43, 0.35, 0.35,0.01}{\parbox{0.97\textwidth}{\hspace{15pt}#1#2#3}}}
+\captionsetup[lstlisting]{format=listing,labelfont=white,textfont=white, singlelinecheck=false, margin=2pt, font={bf,footnotesize}}
+	
+
+\usepackage[table]{xcolor}
+
+\definecolor{darkblue}{rgb}{0,0,.6}
+\definecolor{darkred}{rgb}{.6,0,0}
+\definecolor{darkgreen}{rgb}{0,.6,0}
+\definecolor{red}{rgb}{.9,0,0}
+
+\lstset{frame=b,
+		breaklines=true,
+		captionpos=t,
+		tabsize=4,
+		showstringspaces=false,
+		basicstyle=\scriptsize\ttfamily,
+		numberstyle=\tiny,
+		numbers=left, 
+		xleftmargin=17pt,
+		xrightmargin=4pt,
+        framexbottommargin=4pt,
+		keywordstyle=\color{darkblue}\bfseries\ttfamily,
+		stringstyle=\ttfamily\color{darkred},  
+		commentstyle=\itshape\color{darkgreen}}
+
+
+\bibliographystyle{plain}	% Art der Zitierung - Havardmethode
+
+
+\begin{document}
+
+% title page
+\input{content/Title}
+
+\input{content/abstract}
+
+\tableofcontents
+\clearpage
+
+
+\input{content/Introduction}
+% here you can include more latex files
+%\input{..} 
+
+% Bibliographie
+\clearpage
+\bibliography{literature}
+\clearpage
+
+\input{content/appendix}
+
+\end{document}
