@@ -75,34 +75,130 @@ this interconnection, fieldbus systems were invented.
 	
 	For our racing car, whose IT-infrastructure is not as cost-sensitive and
 	complex as the one used in modern personal vehicles we only use one bus system.
-	There are various different CAN nodes in place that meet all different classes. Using the CAN
-	bus, following protocol ISO 11898-2, as our bussystem was a logical choice
-	since it is fairly fault-tolerant and provides enough bandwidth for all
-	connected devices. 
+	There are various different CAN nodes in place that meet all previously
+	mentioned SAE classes. Using the high speed CAN bus solution ISO
+	11898-2\cite{iso11898-2}, as our bussystem was a logical choice since it is
+	fairly fault-tolerant and provides enough bandwidth for all connected devices.
 	
-	After a short introduction into fieldbus systems and the CAN system the next
-	chapter gives insight into how the CAN nodes communicate with each other
+	After this short introduction into fieldbus systems and the CAN system, the
+	next chapter gives insight into how the CAN nodes communicate with each other
 	following the CAN protocol. And how the CAN protocol provides the discussed
 	feature of fault tolerance.
 	
 
-\section{CAN Busprotocol}
-This section will include an introduction to the CAN Bus in general by
-describing how it works. I will show the reader the differen layers of the CAN
-bus on a layer diagram like the
-	\autoref{fig:can_layers} 
+\section{CAN bus protocol}
+Bussystems implement a protocol that defines the language of communication that
+each bus node needs to speak in order to understand each other. Where many
+network protocols are very complex, defining encapsulation for each OSI layer.
+Field bus systems like CAN only need to implement the physical layer and the
+data link layer of the OSI model\autoref{fig:can_layers} . The physical layer
+defines how the bytes are physically transmitted over the wire and therefor is very important when it
+comes to maximum bus length and transmission speed. The data link layer
+describes the actual language spoken, by defining the encapsulation and how the
+data frame is used to achieve the features provieded by the bus. 
 
 \begin{figure}[htb] \centering
-\includegraphics[width=0.7\textwidth]{content/pictures/Typical_architecture_of_a_CAN-based_system}
-		\caption{Typical architecture of a CAN-based system}
-		\label{fig:can_layers}
-	\end{figure}
-\subsection{Message Framing}
+	\includegraphics[width=1\textwidth]{content/pictures/OSI_CAN}
+	\caption{OSI Layers on the CAN system layers}
+	\label{fig:can_layers}
+\end{figure}
+
+This chapter will give a detailed insight into the data link layer of the CAN
+protocol and will not describe the physical layer implementation. This is
+because out project group is only interested in the CAN bus protocol as it's
+seen by the programmer and we assume that the physical layer works independently
+and doesn't need to be manipulated to achiebe our goals. However if you are
+interested in the physical layer you can read the CAN Specification
+2.0\cite{can2spec} by Bosch or directly go through the ISO standards ISO 11898-2\cite{iso11898-2} or ISO
+11898-3\cite{iso11898-3}.
+
+In order to understand the protocol implementation for the CAN features one
+thing you need to know about the physical layer is that it uses event or message
+based communication so messages are send on demand and not in regular time
+intervals. However there is an implementation of CAN called
+TT-CAN\cite{iso11898-4} which implements time triggered communication to meet
+the requirements of certain scheduling techniques used in real-time operating systems.
+Also note that the CAN bus uses two wired AND implementation, so it compares
+the electric tension of one wire to the other to detect transmitted bits. In the
+frame description we talk about dominant and recessive bits where dominant bits
+represent a logical '0' and recessive bits repressent a logical '1'.
+
+Before going into implementation details the following table outlines the
+properties of the CAN protocols to give you an overview of the content in the
+upcoming subchapters:
+
+\begin{center}
+    \begin{tabular}{ | l | p{5.5cm} |}
+    \hline
+    \rowcolor{lightgray} Properties of the CAN protocol \\ \hline
+    prioritization of messages & jkljkljkl \\ \hline
+    guarantee of latency times & iopiopiop \\ \hline
+    configuration flexibility & iopiopiop \\ \hline
+    multicast reception with time synchronization & iopiopiop \\ \hline
+    system wide data consistency & iopiopiop \\ \hline
+    multimaster & iopiopiop \\ \hline
+    error detection and signalling & iopiopiop \\ \hline
+    automatic retransmission of corrupted messages as soon as the bus is idle
+    again & ioioio \\ \hline 
+    distinction between temporary errors and permanent
+    failures of nodes and autonomous switching off of defect nodes & afsdfasd \\
+    \hline
+    \end{tabular}
+\end{center}
+
+\subsection{Encapsulation}
 Message framing is one of the main aspects of reading and understanding the
-bitstream coming from the CAN bus. This section will outline the different
-Message formats and go through their frame data structure in detail.
-	\paragraph{Data Frame}
-Sending 8 bytes of data.
+bitstream coming from the CAN bus to our monitoring system. This section will
+outline the different message formats and types and go through their frame data
+structure in detail.
+	\subsubsection{Frame Formats}
+	To avoid overhead in smaller networks CAN implements two frame formats by
+	varying the length of the identifier. Standard frames include an 11 bit
+	identifier whereas extended frames include a 29 bit identifier. In our racing
+	car we only use the extended frame format.
+	\subsubsection{Frame Types}
+	Implementation of the previous shown properties of the CAN protocol requires
+	different frame types that are send to communicate data (Data Frame), to
+	request data (Remote Frame), to propagate a transmission error (Error Frame) or
+	to delay further transmissions because of an overloaded node (Overload Frame).
+	\paragraph{Extended Data Frame}
+	Data frame is the main transmission frame which is used to send data over the
+	bus. One data frame consists of a maximum of 8 bytes of data which are
+	encapsulated like in \autoref{fig:extended_data_frame}
+	
+	\begin{figure}[htb] \centering
+		\includegraphics[width=1\textwidth]{content/pictures/Extended_Data_Frame}
+		\caption{Detailed view of the Extended Data Frame}
+		\label{fig:extended_data_frame}
+	\end{figure}
+	
+	Ths Start of Frame (SOF) consists of at least one dominant bit which signals
+	that the bus is idle. This is important to ensure synchronization.
+	
+	The Arbitration Field defines the identifier of the message. For extended data
+	frames the identifier consists of a 11 bit base id where the first transmitted
+	bit is the most significant one. Then there are two control bits of which the
+	IDE bit is there to identify the use of extended format by transmitting a
+	recessive bit. Followed by the extended it with 18 bits. The base id is very
+	important when it comes to arbitration because it defines the base priority of
+	the message.
+	Also included into the Arbitration Field as the last bit following the extended
+	id is the so called RTR bit which distinguishes the remote frame from the data
+	frame. In a data frame the RTR bit is dominant.
+	
+	The Control Field consists of 6 bits that serve the main purpose of of defining
+	the DLC (Data Length Code). In standard frames the first 2 bits are used for
+	the SRR and IDE bits, but since in extended frames those control bits are
+	defined in the Arbitration Field, the first two bits of the Control Field are
+	unused reserved bits which should be dominant but need to be accepted by
+	receivers either way. The DLC defines the number of bytes that will be
+	transmitted in the Data Field, where DLC3\autoref{fig:extended_data_frame} is
+	the most significant bit.
+	
+	-Flexible Datarate
+	 and therefor
+	provides a predictable communication delay, which is important for real time
+	operating systems.
 	\paragraph{Remote Frame}
 Requesting data from another node.
 	\paragraph{Error Frame}
