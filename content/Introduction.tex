@@ -87,9 +87,10 @@ this interconnection, fieldbus systems were invented.
 	
 
 \section{CAN bus protocol}
-Bussystems implement a protocol that defines the language of communication that
-each bus node needs to speak in order to understand each other. Where many
-network protocols are very complex, defining encapsulation for each OSI layer.
+Bussystems implement protocols that define the language of communication that
+each bus node follows for data transmission or reception.
+While many network protocols are very complex, defining encapsulation for each
+OSI layer.
 Field bus systems like CAN only need to implement the physical layer and the
 data link layer of the OSI model\autoref{fig:can_layers} . The physical layer
 defines how the bytes are physically transmitted over the wire and therefor is very important when it
@@ -105,9 +106,9 @@ data frame is used to achieve the features provieded by the bus.
 
 This chapter will give a detailed insight into the data link layer of the CAN
 protocol and will not describe the physical layer implementation. This is
-because out project group is only interested in the CAN bus protocol as it's
+because our project group is only interested in the CAN bus protocol as it's
 seen by the programmer and we assume that the physical layer works independently
-and doesn't need to be manipulated to achiebe our goals. However if you are
+and doesn't need to be manipulated to achieve our goals. However if you are
 interested in the physical layer you can read the CAN Specification
 2.0\cite{can2spec} by Bosch or directly go through the ISO standards ISO 11898-2\cite{iso11898-2} or ISO
 11898-3\cite{iso11898-3}.
@@ -118,7 +119,7 @@ based communication so messages are send on demand and not in regular time
 intervals. However there is an implementation of CAN called
 TT-CAN\cite{iso11898-4} which implements time triggered communication to meet
 the requirements of certain scheduling techniques used in real-time operating systems.
-Also note that the CAN bus uses two wired AND implementation, so it compares
+Also note that the CAN bus uses a two-wired-AND implementation, so it compares
 the electric tension of one wire to the other to detect transmitted bits. In the
 frame description we talk about dominant and recessive bits where dominant bits
 represent a logical '0' and recessive bits repressent a logical '1'.
@@ -128,20 +129,20 @@ properties of the CAN protocols to give you an overview of the content in the
 upcoming subchapters:
 
 \begin{center}
-    \begin{tabular}{ | l | p{5.5cm} |}
+    \begin{tabular}{ | p{35em} |}
     \hline
     \rowcolor{lightgray} Properties of the CAN protocol \\ \hline
-    prioritization of messages & jkljkljkl \\ \hline
-    guarantee of latency times & iopiopiop \\ \hline
-    configuration flexibility & iopiopiop \\ \hline
-    multicast reception with time synchronization & iopiopiop \\ \hline
-    system wide data consistency & iopiopiop \\ \hline
-    multimaster & iopiopiop \\ \hline
-    error detection and signalling & iopiopiop \\ \hline
+    prioritization of messages \\ \hline
+    guarantee of latency times \\ \hline
+    configuration flexibility \\ \hline
+    multicast reception with time synchronization \\ \hline
+    system wide data consistency \\ \hline
+    multimaster \\ \hline
+    error detection and signalling \\ \hline
     automatic retransmission of corrupted messages as soon as the bus is idle
-    again & ioioio \\ \hline 
+    again \\ \hline 
     distinction between temporary errors and permanent
-    failures of nodes and autonomous switching off of defect nodes & afsdfasd \\
+    failures of nodes and autonomous switching off of defect nodes\\
     \hline
     \end{tabular}
 \end{center}
@@ -157,13 +158,13 @@ structure in detail.
 	identifier whereas extended frames include a 29 bit identifier. In our racing
 	car we only use the extended frame format.
 	\subsubsection{Frame Types}
-	Implementation of the previous shown properties of the CAN protocol requires
-	different frame types that are send to communicate data (Data Frame), to
-	request data (Remote Frame), to propagate a transmission error (Error Frame) or
+	The implementation of the previous shown properties of the CAN protocol
+	requires different frame types that are send to: communicate data (Data Frame),
+	to request data (Remote Frame), to propagate a transmission error (Error Frame) or
 	to delay further transmissions because of an overloaded node (Overload Frame).
-	\paragraph{Extended Data Frame}
-	Data frame is the main transmission frame which is used to send data over the
-	bus. One data frame consists of a maximum of 8 bytes of data which are
+	
+	\paragraph{Extended Data Frame} is the main transmission frame which is used to
+	send data over the bus. One data frame consists of a maximum of 8 bytes of data which are
 	encapsulated like in \autoref{fig:extended_data_frame}
 	
 	\begin{figure}[htb] \centering
@@ -182,8 +183,8 @@ structure in detail.
 	recessive bit. Followed by the extended it with 18 bits. The base id is very
 	important when it comes to arbitration because it defines the base priority of
 	the message.
-	Also included into the Arbitration Field as the last bit following the extended
-	id is the so called RTR bit which distinguishes the remote frame from the data
+	Also included into the Arbitration Field, as its last bit, following the
+	extended id is the so called RTR bit which distinguishes the remote frame from the data
 	frame. In a data frame the RTR bit is dominant.
 	
 	The Control Field consists of 6 bits that serve the main purpose of of defining
@@ -210,19 +211,19 @@ structure in detail.
 	is called EOF sequence.
 	
 	The very low maximum length of 8 byte per frame provides a predictable
-	communication delay, which is important for real time operating systems. Anyhow
+	communication delay, which is important for real time communication. Anyhow
 	to improve throughput a new CAN specification is currently under development
 	which is called FD CAN. FD stands for flexible datarate. So to increase
 	throughput and decrease frame overhead the 8 byte limit will be extended
-	depending on the bus length.
+	depending on the bus length. 
 	 
-	\paragraph{Remote Frame}
-	An actor can request data from another CAN node by sending a Remote Frame
-	which provides a light frame structure for this kind of request.
+	\paragraph{Remote Frame} allows actors to request data from another CAN node
+	by sending the frame which provides a light frame structure for this kind of
+	request.
 	
-	\paragraph{Error Frame}
-    Propagation of an error that occured for example during data transmission.
-    This frame allows cancelation of bus transmissions in progress.
+	\paragraph{Error Frame} is used to propagat an error that occured for
+	example during data transmission. This frame allows cancelation of bus
+	transmissions in progress.
     
     \paragraph{Overload Frame}
 	There are three conditions that lead to the transmission of the overload frame.
@@ -247,7 +248,7 @@ section
 	algorithm used and outlines how the CRC check doesn't detect every transmission
 	error that occured.
 	\paragraph{Bit Stuffing}
-	Bit Stuffing is used to prevent synchronisation errors and allows error frames
+	is used to prevent synchronisation errors and allows error frames
 	to cancel transmissions that are currently in progress.
 
 \section{Bus Security Concerns}
