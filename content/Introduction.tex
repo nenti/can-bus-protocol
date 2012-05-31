@@ -217,41 +217,123 @@ structure in detail.
 	throughput and decrease frame overhead the 8 byte limit will be extended
 	depending on the bus length. 
 	 
-	\paragraph{Remote Frame} allows actors to request data from another CAN node
-	by sending the frame which provides a light frame structure for this kind of
-	request.
+	\paragraph{Remote Frame} allows actors to request data from another CAN node.
+	The frame looks basically the same as the Data Frame. To signal a Remote
+	Frame, the RTR bit of the Arbitration Field is set to recessive. The Remote
+	Frame is only a request, there is no acutal data sent, so it leaves out the
+    Data Field while still maintaining the Control Field to signal the expected
+	length of the corresponding Data Frame.
+	The identifier of the Remote Frame is set to the identifier of the requested
+	message and doesn't include any information about the source of the request.
 	
-	\paragraph{Error Frame} is used to propagat an error that occured for
-	example during data transmission. This frame allows cancelation of bus
-	transmissions in progress.
+	TODO: Example
+	
+	\paragraph{Error Frame} is used to propagat an error that occured during data
+	transmission. It consists of two fields. The first field contains the Error
+	Flag and the second field is the Error Delimiter. 
+	There are two different Error Flags, the Active Error Flag and the Passive
+	Error Flag. An ``error active'' station that detects an error condition starts
+	transmission of 6 consecutive dominant bits which themself form the Active
+	Error Flag. This violates bit stuffing and therefor provokes all nodes to an
+	error state and allows cancelation of data transmissions in progress. So the
+	first field of the Error Frame is actually called superposition of Error Flags
+	because it consists of the Error Flags of all nodes and can therefor become up
+	to 12 bits long.
+	The Passive Error Flag consists of 6 consecutive recessive bits but also
+	accepts 6 dominant bits from an Active Error Frame as a successful Error Flag
+	proceeding to the Error Delimiter.
+	The Error Delimiter consists of eight recessive bits that start when the
+	first recessive bit is detected on the bus, after successfully transmitting the
+	Error Flag.
+	
     
-    \paragraph{Overload Frame}
-	There are three conditions that lead to the transmission of the overload frame.
-	The goal ot the overload frame is to delay the next bus transmission.
+    \paragraph{Overload Frame} looks exactly the same as an Active Error Frame.
+    The only difference is that it has different start conditions and doesn't
+    increase the error counter. There are three conditions that lead to the transmission of the
+    overload frame. While an Error Frame is transmitted during the
+    transmission of a Data- or a Remote Frame, an Overload Frame is only
+    started after the last bit of a delimiter. They are for example used to postpone any
+    further transmission on the bus due to some internal condition, for example
+    an overloaded processing unit.
+    The bus communication can be postponed by transmitting a snail of Overload Frames
+    each starting at the end of the delimiter of its preceding Overload Frame.
+    To prevent a permanent blocking of the bus, at most two consecutive Overload
+    Frames are allowed to delay further communication. The other two conditions for
+    Overload Frames are unexpected dominant bits in the Interframe Space or the delimiter of an Error Frame.
     
-\subsection{Bus Arbitration}
-Arbitration is an important part of a bus system which has several nodes
-connected that want to communicate over the shared bus. The CAN bus uses
-priority based arbitration which will be described in this section. I will also
-include a discussion about real time requirements and the problem of suppressed
-low priority nodes.
-\subsection{Message Filtering}
-In a bus system which uses broadcast and not packet-switching based data
-transmission, filtering messages and identifying the correct receiver is a key
-feature which will be described in this section.
-\subsection{Error Management and Synchronisation}
-CAN is a very reliable bus system because it runs synchronous and uses various
-error detection and management procedures which will be described in this
-section
+        
+	\subsection{Bus Arbitration}
+	Arbitration is an important part of a bus system which has several nodes
+	connected that compete for access on the shared bus. The CAN bus uses
+	priority based arbitration where the message identifier also represents the
+	message priority. The arbitration on a CAN bus is based on the principle of
+	silently failing a lost arbitration and therefor it is possible to arbitrate
+	competing transmissions on the fly. 
+	
+	On an idle bus any node can start transmitting its data frame. If two nodes
+	start transmission at the same bit they are competing against each other for
+	bus access.
+	They keep sending their frame while monitoring the bus as a listener. If a dominant
+	bit (0) is measured although a recessive bit was send, the node looses
+	arbitration and turns itself from a transmitter into a receiver node. This is
+	important because the message of the winning node might be intended for the
+	competing node that lost the arbitration. This method of continuous arbitration is called: ``Carrier Sense,
+	Multiple Access/Collision Detection + Collision Resolution'' (CSMACD + CR).
+	
+	\begin{figure}[htb] \centering
+		\includegraphics[width=1\textwidth]{content/pictures/arbitration.png}
+		\caption{Example for bus arbitration of three simultanious sending CAN nodes}
+		\label{fig:arbitration}
+	\end{figure}
+	
+	Competing communication nodes have the problem of higher latency due to the
+	waiting time for other transmission. According to Lawrenz (1999)
+	\cite{canbook-lawrenz} for low bus loads (smaller 10\%) this delay can be
+	neglected (p.
+	33).
+	For applications with real time requirements, for example in closed loop
+	control systems, the arbitration system needs to be taken into consideration to ensure
+	meeting the latency requirements of those systems. Therefor the priorities of
+	realtime systems need to be set to a reasonable value to ensure that the
+	highest possible delay for the message transmission is smaller than the
+	slowest tolerable reaction time of the system.
+	
+	\subsection{Message Filtering}
+	Filtering messages is a key feature of a bus system that
+	multicasts all messages to all bus nodes. The CAN bus doesn't support switching
+	or routing, therefor filtering messages at the receiving nodes is used to
+	identify relevant messages. The identifier that is specified in the Arbitration
+	Field of the Data Frame ``does not indicate the destination of the message, but
+	the meaning of the data'' \cite{can2spec}. This means, that bus nodes can send
+	various different messages with various different identifiers and the bus doesn't know
+	where they are from, nor where they are headed to. 
+	
+	Each receiver filters the
+	relevant data and sends it to the application layer. Many CAN applications use
+	message filtering based on the data received from the object
+	layer \autoref{fig:extended_data_frame}.
+	Filtering messages on the application layer will also be important for the CAN
+	monitoring system we are developing. To prevent runtime errors we are required
+	to validate the data format of the received messages before sending it to the
+	userinterface.
+	
+	
+		
+	\subsection{Error Management and Synchronisation}
+	CAN is a very reliable bus system because it runs synchronous and uses various
+	error detection and management procedures which will be described in this
+	section
+	
 	\paragraph{CRC Check}
 	This section give details about the CRC Check. Provides information about the
 	algorithm used and outlines how the CRC check doesn't detect every transmission
 	error that occured.
+	
 	\paragraph{Bit Stuffing}
 	is used to prevent synchronisation errors and allows error frames
 	to cancel transmissions that are currently in progress.
 
-\section{Bus Security Concerns}
+\section{Bus Security Concerns} 
 Our project goal to connect a CAN bus with a wireless monitoring system
 introduces a new threat to our car. Whereas the CAN bus used to be a closed
 system which therefor was very hard to attack, we open up our bus
