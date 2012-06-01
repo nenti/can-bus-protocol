@@ -86,7 +86,7 @@ this interconnection, fieldbus systems were invented.
 	feature of fault tolerance.
 	
 
-\section{CAN bus protocol}
+\section{CAN protocol properties} 
 Bussystems implement protocols that define the language of communication that
 each bus node follows for data transmission or reception.
 While many network protocols are very complex, defining encapsulation for each
@@ -163,13 +163,13 @@ structure in detail.
 	to request data (Remote Frame), to propagate a transmission error (Error Frame) or
 	to delay further transmissions because of an overloaded node (Overload Frame).
 	
-	\paragraph{Extended Data Frame} is the main transmission frame which is used to
+	\paragraph{Data Frame} is the main transmission frame which is used to
 	send data over the bus. One data frame consists of a maximum of 8 bytes of data which are
 	encapsulated like in \autoref{fig:extended_data_frame}
 	
 	\begin{figure}[htb] \centering
-		\includegraphics[width=1\textwidth]{content/pictures/EDF}
-		\caption{Detailed view of the Extended Data Frame}
+		\includegraphics[width=1\textwidth]{content/pictures/data_frame.png}
+		\caption{Detailed view of the Extended Data Frame \cite{vector:2012:online}}
 		\label{fig:extended_data_frame}
 	\end{figure}
 	
@@ -226,17 +226,15 @@ structure in detail.
 	The identifier of the Remote Frame is set to the identifier of the requested
 	message and doesn't include any information about the source of the request.
 	
-	TODO: Example
-	
 	\paragraph{Error Frame} is used to propagat an error that occured during data
 	transmission. It consists of two fields. The first field contains the Error
 	Flag and the second field is the Error Delimiter. 
 	There are two different Error Flags, the Active Error Flag and the Passive
 	Error Flag. An ``error active'' station that detects an error condition starts
 	transmission of 6 consecutive dominant bits which themself form the Active
-	Error Flag. This violates bit stuffing and therefor provokes all nodes to an
-	error state and allows cancelation of data transmissions in progress. So the
-	first field of the Error Frame is actually called superposition of Error Flags
+	Error Flag. This violates bit stuffing and therefor provokes all nodes to
+	switch to an error state and therefor allows cancelation of data transmissions
+	in progress. So the first field of the Error Frame is actually called superposition of Error Flags
 	because it consists of the Error Flags of all nodes and can therefor become up
 	to 12 bits long.
 	The Passive Error Flag consists of 6 consecutive recessive bits but also
@@ -277,8 +275,9 @@ structure in detail.
 	bit (0) is measured although a recessive bit was send, the node looses
 	arbitration and turns itself from a transmitter into a receiver node. This is
 	important because the message of the winning node might be intended for the
-	competing node that lost the arbitration. This method of continuous arbitration is called: ``Carrier Sense,
-	Multiple Access/Collision Detection + Collision Resolution'' (CSMACD + CR).
+	competing node that lost the arbitration. The bitwise arbitration process is
+	core element of the bus access system used on the CAN bus which is called:
+	``Carrier Sense, Multiple Access / Collision Avoidance'' (CSMA/CA).
 	
 	\begin{figure}[htb] \centering
 		\includegraphics[width=1\textwidth]{content/pictures/arbitration.png}
@@ -317,21 +316,129 @@ structure in detail.
 	to validate the data format of the received messages before sending it to the
 	userinterface.
 	
-	
 		
-	\subsection{Error Management and Synchronisation}
-	CAN is a very reliable bus system because it runs synchronous and uses various
-	error detection and management procedures which will be described in this
-	section
+	\section{Error Management}
+	CAN is a very reliable bus system because it runs synchronous and
+	guarantees data consistency over all nodes. This is possible because of the
+	error detection and management procedures embedded into the bus protocol. This
+	chapter will give insight in what types of errors there are, how the
+	countermeasures work and how the CAN bus deals with error prone devices.
 	
-	\paragraph{CRC Check}
-	This section give details about the CRC Check. Provides information about the
-	algorithm used and outlines how the CRC check doesn't detect every transmission
-	error that occured.
+	\subsection{Fault Confinement}
+	The bus systems relies on the proper functionality of each device connected. In
+	case of an error prone device on the bus, the communication between all devices
+	can be substantially affected. When a valid transmission is detected as
+	invalid because of an internal failure of a CAN node, it keeps being
+	invalidated by the active error packet sent by this node. To prevent this from
+	happening, the fault confinement part of the CAN protocol defines three states
+	a bus device can have:
+	\subparagraph{Error active} units are the default participants in the bus
+	communications and are allowed to send Active Error Flags when an error has
+	been detected. 
+	\subparagraph{Error passive} units are not allowed to send an Active Error Flag
+	but keep participating in the normal bus communication. They loose the
+	priviledge to block ongoing transmissions on an error detection. In case of a
+	detected error, the error passive CAN node sends a Passive Error Flag which
+	only consists of recessive bits. A passive Error Frame is only detected by
+	other devices when it's propagated by the transmitter of the current message.
+	\subparagraph{Bus off} units are not allowed to send any traffice to the bus
+	anymore. The output drivers are switched off and the application layer might
+	need to execute further steps if a failure of the device is fatal for the
+	entire system.
 	
-	\paragraph{Bit Stuffing}
-	is used to prevent synchronisation errors and allows error frames
-	to cancel transmissions that are currently in progress.
+	To detect defect CAN nodes, the fault confinment process implements two counts
+	that need to be maintained by every node: Transmit Error Count and Receive
+	Error Count. Basically each error that occures has a penaulty that increases
+	the error counter of each node accordingly. There are mechanisms in place that
+	detect if the node itself was the first one to detect the error (high penaulty
+	8) or if it collectively detected the error with all other nodes (low penaulty
+	1). There are 12 rules in place that define the conditions and exceptions for
+	penaulties and state transitions in detail \cite{can2spec}. As an example for
+	the development of the error counter on a can bus look at
+	\autoref{fig:error_counter}.
+	
+	\begin{figure}[htb] \centering 
+		\includegraphics[width=1\textwidth]{content/pictures/error_counter.png}
+		\caption{Example for CAN error counters (p. 97, Lawrenz,
+		1999)\cite{canbook-lawrenz}}
+		\label{fig:error_counter}
+	\end{figure}
+	
+	When the Transmit Error Count or the Receive Error Count exceeds 127, the node
+	becomes error passive until both counts are decreased below 128 again. Because
+	an error passive node can't do any damage to the bus communication when
+	receiving data anymore, in order to become bus off, only the Transmit Error
+	Count is taken into consideration. When the Transmit Error Counter exceeds the
+	mark of 255, the node is turned bus off. The only possibility to leave this
+	state again is on an idle bus, where it's affordable to check if `bus off' nodes
+	might work again. In detail the `bus off' node monitors the bus and counts the
+	occurence of 11 consecutive recessive bits. If this happened 128 times, so after
+	1408 bus idle bits the node sets both counters to zero and returns bus active
+	again. Penaulties can count up to a critical level very fast because one error
+	can count for up to eight penaulty points. On the other side the counter is only
+	decreased by one penaulty point for each successfull data transmission. The CAN
+	protocol considers error counts above 96 as critical and suggests to monitor
+	the bus for that level to prevent critical failures. The observation of the
+	error counts might also be a valuable suggestion for our CAN monitoring system
+	to detect communication problems on the bus via the user interface.
+	
+	After this introduction to the error management system of the CAN bus the next
+	chapter outlines the different error conditions on the bus. Each error
+	condition is propagated over the bus by sending an Error Frame and the error
+	count is increased as discussed in this chapter.
+	
+	\subsection{Error Types}
+	The CAN bus protocol strictly defines frame formats and includes
+	countermeasures like the cyclic redundancy check (CRC) or 
+	bit stuffing. Therefor the protocol defines different error types that occure
+	on error conditions during the communication. Now that we know how the ``Error Frame''
+	looks like, this chapter looks at the events that trigger the nodes to change
+	to an error state and intercept ongoing communication.
+	
+	\subsubsection{Bit Error} 
+	A Bit Error is detected by the transmitter monitoring the bus
+	while sending data on it to detect a missmatch. This method is also used in
+	the arbitration process. During the
+	arbitration, the Bit Error detection is disabled so the transmission can
+	silently fail. Anywhere else in the Data Frame or any other frame type a
+	Bit Error will be detected, when the transmitter sends a recessive bit but
+	monitors a dominant bit on the bus. The error will be propagated over the bus
+	by sending an Error Frame aborting the ongoing transmission. There are
+	other exceptions where a Bit Error is suppressed to allow certain processes
+	to work:
+	\begin{itemize}
+	  \item The Ack Field is designed to have receivers send a dominant bit on
+	a received recessive bit from the transmitter to confirm the successfull
+	reception of the entire packet.
+	  \item Monitoring a
+	  dominant bit on transmission of a Passive Error Flag, is also not
+	  interpreted as a Bit Error.
+	\end{itemize} 
+	
+	\subsubsection{Stuff Error}
+	The main frame segments of the Data Frame are coded by a method called bit
+	stuffing. This means that whenever the transmitter monitors five consecutive
+	bits of the same value on the bus, it automatically sends a complementary bit.
+	A Stuff Error is triggered when a 6th consecutive bit of the same value is
+	detected in field that is supposed to be coded with bit stuffing. That way an
+	Active Error Flag that consists of six consecutive dominant bits provokes a
+	Stuff Error on all other nodes listening to the bus, by intentionally not
+	following the coding rules of bit stuffing.
+	
+	\subsubsection{CRC Error}
+	\label{subsec:crc_check}
+	The Cyclic Redundancy Check (CRC) is a commonly used error-detection method to
+	detect random bit changes in raw data. Automotive bus systems are used in a
+	rough environment side by side with a lot of different technologies and
+	therefor need to prevent errors that often occure in their operational area.
+	For example caused by noise in the transmission channel. The CAN bus implements
+	a CRC check for the entire Data Frame up to the CRC Field. This ensures
+	integrity of the transmitted data. If the CRC Sequence calculated by the
+	receiver, over the transmitted data stream, doesn't match the CRC Sequence in
+	the received CRC Frame, an CRC Error is propagated and the transmission of the
+	packet has to restart. In order to meet the bit requirement of the implemented
+	CRC configuration which should check less than 127 bits at a time, only the
+	destuffed bitstream is checked.
 
 \section{Bus Security Concerns} 
 Our project goal to connect a CAN bus with a wireless monitoring system
@@ -339,9 +446,40 @@ introduces a new threat to our car. Whereas the CAN bus used to be a closed
 system which therefor was very hard to attack, we open up our bus
 system to an uncontrollable audience by sending and receiving data via wireless
 technology. Even though available countermeasures for the wireless
-transmission is used, undesired wireless interaction with our CAN bus can not be
-ruled out. This chapter will therefor outline upcoming threats for embedded CAN
+transmission is available, undesired wireless interaction with our CAN bus can
+not be ruled out. This chapter will therefor outline upcoming threats for embedded CAN
 communication and present proposals for countermeasures.
+
+\subsection{Denial of Service}
+As previously discussed the CAN specification uses bitwise arbitration for its
+access system CSMA/CA. The arbitration forces CAN nodes to back of from their
+transmission when they detect a higher prioritized node transmitting a message
+at the same time. This simple but very effective system together with the
+possibility of external access from a potential attacker to a CAN node
+introduces a high risk potential. The attacker can send senseless Data Frames
+with the highest priority on the highest possible rate and therefor jam the
+entire bus communication. This is also why Marko Wolf et al. (2004) call this
+type of attack the ``Jamming Attack''. For this attack scenario I prefered the
+more common known name ``Denial of Service'' following the work of Wampler and
+Fu (2009) \cite{security-wampler-huirong} because it follows
+the ``Denial of Service'' principles of spamming a system so it breaks down,
+in this case so the bus is jammed.
+
+For our monitoring system this is a very real threat because it might be planned
+for the future to allow tweaking CAN devices via the monitoring system for
+testing purposes. Therefor the interface must allow wireless devices to send CAN
+messages to the bus. Furthermore it must be possibe to set the identifiers
+of a message to be able to manipulate CAN devices on the bus. This would allow
+attackers to use this interface for a ``Denial of Service'' attack.
+
+Possible countermeasures against this threat would be to disassemble the device
+after the testing process. An on/off switch might be forgotten to turn off after
+testing and therefor should be considered as an insufficient approach.
+Furthermore it would be possible to include a basic firewall into the wireless interface device
+that only allows low priority messages to be send by this device. This would
+allow defining security relevant messages under a high priority level that is
+filtered on the interface device and therefor not allowed to be manipulated by
+it.
 
 \section{Conclusion}
 The CAN bus is a very reliable bus system because of its long historic
